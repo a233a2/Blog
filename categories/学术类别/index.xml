@@ -864,7 +864,7 @@ MATLAB 底层使用 Windows 的 &lt;code&gt;cmd.exe&lt;/code&gt; 执行编译脚
 &lt;h3 id=&#34;px4-simulink最终实现&#34;&gt;PX4-Simulink最终实现
 &lt;/h3&gt;&lt;p&gt;最后成功实现了在2025A版本MATLAB下进行PX4程序的外部模式实验。此时我们就可以搭建我们的模型然后去烧录测试了。&lt;/p&gt;
 &lt;p&gt;附上一个测试视频,这里我使用的是Mathwork里面那个PX4工具箱中的Example模型改的，可以说是非常方便：&lt;/p&gt;
-&lt;video width=&#34;320&#34; height=&#34;240&#34; controls&gt;
+&lt;video width=&#34;640&#34; height=&#34;480&#34; controls&gt;
     &lt;source src=&#34;Test1.mp4&#34; type=&#34;video/mp4&#34;&gt;
 &lt;/video&gt;
 </description>
