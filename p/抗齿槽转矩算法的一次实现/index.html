@@ -1,19 +1,18 @@
 <!DOCTYPE html>
 <html lang="zh-cn" dir="ltr">
     <head><meta charset='utf-8'>
-<meta name='viewport' content='width=device-width, initial-scale=1'><meta name='description' content="两轮平衡车使用的开发板">
-<title>CH32平衡车开发板</title>
+<meta name='viewport' content='width=device-width, initial-scale=1'><meta name='description' content="在FOC云台驱动代码开发时，由于低速跟踪性能不理想，故引入抗齿槽转矩算法，参考ODrive开源方案使用经典查表实现。">
+<title>抗齿槽转矩算法的一次实现</title>
 
-<link rel='canonical' href='https://a233a2.github.io/p/ch32%E5%B9%B3%E8%A1%A1%E8%BD%A6%E5%BC%80%E5%8F%91%E6%9D%BF/'>
+<link rel='canonical' href='https://a233a2.github.io/p/%E6%8A%97%E9%BD%BF%E6%A7%BD%E8%BD%AC%E7%9F%A9%E7%AE%97%E6%B3%95%E7%9A%84%E4%B8%80%E6%AC%A1%E5%AE%9E%E7%8E%B0/'>
 
-<link rel="stylesheet" href="/scss/style.min.b55b4e384ea3dd27cabc721a2a0c1ae7bb22640ecbd265cb9e3b3d4f9aba26ec.css"><meta property='og:title' content="CH32平衡车开发板">
-<meta property='og:description' content="两轮平衡车使用的开发板">
-<meta property='og:url' content='https://a233a2.github.io/p/ch32%E5%B9%B3%E8%A1%A1%E8%BD%A6%E5%BC%80%E5%8F%91%E6%9D%BF/'>
+<link rel="stylesheet" href="/scss/style.min.b55b4e384ea3dd27cabc721a2a0c1ae7bb22640ecbd265cb9e3b3d4f9aba26ec.css"><meta property='og:title' content="抗齿槽转矩算法的一次实现">
+<meta property='og:description' content="在FOC云台驱动代码开发时，由于低速跟踪性能不理想，故引入抗齿槽转矩算法，参考ODrive开源方案使用经典查表实现。">
+<meta property='og:url' content='https://a233a2.github.io/p/%E6%8A%97%E9%BD%BF%E6%A7%BD%E8%BD%AC%E7%9F%A9%E7%AE%97%E6%B3%95%E7%9A%84%E4%B8%80%E6%AC%A1%E5%AE%9E%E7%8E%B0/'>
 <meta property='og:site_name' content='sunjiyi&#39;s Blogggg'>
-<meta property='og:type' content='article'><meta property='article:section' content='Post' /><meta property='article:tag' content='直流电机方案' /><meta property='article:tag' content='Balance' /><meta property='article:published_time' content='2024-07-15T00:00:00&#43;00:00'/><meta property='article:modified_time' content='2024-07-15T00:00:00&#43;00:00'/><meta property='og:image' content='https://a233a2.github.io/p/ch32%E5%B9%B3%E8%A1%A1%E8%BD%A6%E5%BC%80%E5%8F%91%E6%9D%BF/mainboard.JPG' />
-<meta name="twitter:title" content="CH32平衡车开发板">
-<meta name="twitter:description" content="两轮平衡车使用的开发板"><meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:image" content='https://a233a2.github.io/p/ch32%E5%B9%B3%E8%A1%A1%E8%BD%A6%E5%BC%80%E5%8F%91%E6%9D%BF/mainboard.JPG' />
+<meta property='og:type' content='article'><meta property='article:section' content='Post' /><meta property='article:tag' content='直流电机方案' /><meta property='article:tag' content='Balance' /><meta property='article:published_time' content='2026-08-10T00:00:00&#43;00:00'/><meta property='article:modified_time' content='2026-08-10T00:00:00&#43;00:00'/>
+<meta name="twitter:title" content="抗齿槽转矩算法的一次实现">
+<meta name="twitter:description" content="在FOC云台驱动代码开发时，由于低速跟踪性能不理想，故引入抗齿槽转矩算法，参考ODrive开源方案使用经典查表实现。">
     <link rel="shortcut icon" href="/static/favicon.ico" />
 
   
@@ -285,11 +284,25 @@
         <div class="widget--toc">
             <nav id="TableOfContents">
   <ol>
-    <li>
+    <li><a href="#一为什么要做抗齿槽转矩补偿">一、为什么要做抗齿槽转矩补偿</a></li>
+    <li><a href="#二算法设计来源">二、算法设计来源</a></li>
+    <li><a href="#三最初的方案逐点定位采样">三、最初的方案：逐点定位采样</a></li>
+    <li><a href="#四第二次尝试加入独立的速度环">四、第二次尝试：加入独立的速度环</a></li>
+    <li><a href="#五最终方案低速连续扫描">五、最终方案：低速连续扫描</a></li>
+    <li><a href="#六为什么要对补偿表去均值">六、为什么要对补偿表去均值</a></li>
+    <li><a href="#七这次遇到的主要-bug">七、这次遇到的主要 Bug</a></li>
+    <li><a href="#八最终效果">八、最终效果</a></li>
+    <li><a href="#九这次调试得到的经验">九、这次调试得到的经验</a>
       <ol>
-        <li><a href="#ch32平衡车开发板设计">CH32平衡车开发板设计</a></li>
+        <li><a href="#1-不要只照搬算法流程">1. 不要只照搬算法流程</a></li>
+        <li><a href="#2-电机抖动不一定是增益太小">2. 电机抖动不一定是增益太小</a></li>
+        <li><a href="#3-静摩擦是低速标定的重要限制">3. 静摩擦是低速标定的重要限制</a></li>
+        <li><a href="#4-诊断数据比主观观察更可靠">4. 诊断数据比主观观察更可靠</a></li>
+        <li><a href="#5-前馈补偿不能替代闭环">5. 前馈补偿不能替代闭环</a></li>
       </ol>
     </li>
+    <li><a href="#十还可以继续改进什么">十、还可以继续改进什么</a></li>
+    <li><a href="#结语">结语</a></li>
   </ol>
 </nav>
         </div>
@@ -301,20 +314,8 @@
 
 
             <main class="main full-width">
-    <article class="has-image main-article">
+    <article class="main-article">
     <header class="article-header">
-        <div class="article-image">
-            <a href="/p/ch32%E5%B9%B3%E8%A1%A1%E8%BD%A6%E5%BC%80%E5%8F%91%E6%9D%BF/">
-                <img src="/p/ch32%E5%B9%B3%E8%A1%A1%E8%BD%A6%E5%BC%80%E5%8F%91%E6%9D%BF/mainboard.JPG"
-                        
-                        width="4032" 
-                        height="2268" 
-                        loading="lazy"
-                        alt="Featured image of post CH32平衡车开发板" />
-                
-            </a>
-        </div>
-    
 
     <div class="article-details">
     
@@ -329,12 +330,12 @@
 
     <div class="article-title-wrapper">
         <h2 class="article-title">
-            <a href="/p/ch32%E5%B9%B3%E8%A1%A1%E8%BD%A6%E5%BC%80%E5%8F%91%E6%9D%BF/">CH32平衡车开发板</a>
+            <a href="/p/%E6%8A%97%E9%BD%BF%E6%A7%BD%E8%BD%AC%E7%9F%A9%E7%AE%97%E6%B3%95%E7%9A%84%E4%B8%80%E6%AC%A1%E5%AE%9E%E7%8E%B0/">抗齿槽转矩算法的一次实现</a>
         </h2>
     
         
         <h3 class="article-subtitle">
-            两轮平衡车使用的开发板
+            在FOC云台驱动代码开发时，由于低速跟踪性能不理想，故引入抗齿槽转矩算法，参考ODrive开源方案使用经典查表实现。
         </h3>
         
     </div>
@@ -355,7 +356,7 @@
   <path d="M3 11h16" />
   <path d="M18 16.496v1.504l1 1" />
 </svg>
-                <time class="article-time--published">2024-07-15</time>
+                <time class="article-time--published">2026-08-10</time>
             </div>
         
 
@@ -370,7 +371,7 @@
 
 
                 <time class="article-time--reading">
-                    阅读时长: 1 分钟
+                    阅读时长: 7 分钟
                 </time>
             </div>
         
@@ -385,45 +386,248 @@
     <section class="article-content">
     
     
-    <h3 id="ch32平衡车开发板设计">CH32平衡车开发板设计
-</h3><p>主控芯片：CH32V307VCT6
-电机驱动：TB6612方案
-下载芯片：CH549G
-<img src="/p/ch32%E5%B9%B3%E8%A1%A1%E8%BD%A6%E5%BC%80%E5%8F%91%E6%9D%BF/sim_mainboard.PNG"
-	width="1468"
-	height="1075"
+    <p>先来看实现低速跟踪效果，同一组PID参属下的两种形式：</p>
+<div class="table-wrapper"><table>
+<thead>
+<tr>
+<th style="text-align:center">关闭齿槽转矩补偿</th>
+<th style="text-align:center">开启齿槽转矩补偿</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center"><img src="/p/%E6%8A%97%E9%BD%BF%E6%A7%BD%E8%BD%AC%E7%9F%A9%E7%AE%97%E6%B3%95%E7%9A%84%E4%B8%80%E6%AC%A1%E5%AE%9E%E7%8E%B0/%E5%85%B3%E9%97%AD%E8%A1%A5%E5%81%BF.png"
+	width="838"
+	height="1234"
 	
 	loading="lazy"
 	
-		alt="PCB仿真图"
+		alt="关闭齿槽转矩补偿"
 	
 	
 		class="gallery-image" 
-		data-flex-grow="136"
-		data-flex-basis="327px"
+		data-flex-grow="67"
+		data-flex-basis="162px"
 	
->
-<img src="/p/ch32%E5%B9%B3%E8%A1%A1%E8%BD%A6%E5%BC%80%E5%8F%91%E6%9D%BF/mainboard.JPG"
-	width="4032"
-	height="2268"
+></td>
+<td style="text-align:center"><img src="/p/%E6%8A%97%E9%BD%BF%E6%A7%BD%E8%BD%AC%E7%9F%A9%E7%AE%97%E6%B3%95%E7%9A%84%E4%B8%80%E6%AC%A1%E5%AE%9E%E7%8E%B0/%E5%BC%80%E5%90%AF%E8%A1%A5%E5%81%BF.png"
+	width="840"
+	height="1231"
 	
 	loading="lazy"
 	
-		alt="实物图"
+		alt="开启齿槽转矩补偿"
 	
 	
 		class="gallery-image" 
-		data-flex-grow="177"
-		data-flex-basis="426px"
+		data-flex-grow="68"
+		data-flex-basis="163px"
 	
-></p>
-<p>开源链接：<a class="link" href="https://github.com/a233a2/CH32_DC_BalanceCar"  target="_blank" rel="noopener"
-    >https://github.com/a233a2/CH32_DC_BalanceCar</a></p>
-<p>PID平衡部分计划使用两种方案进行对比
-1 pid_1.c文件 即不通过控制角度来确定速度，通过将直立环PID的目标设为重力0点，来维持平衡，之后通过速度环调速。
-2 pid.c文件 通过控制角度来确定速度，速度环输出目标速度下的应得角度，直立环与速度环串级，直立环负责达到对应角度。</p>
-<p>某些地方还并不完善，比如PID参数方面还不尽完美。在之后我将从算法方面对其进行优化。从数学角度找找这两种方案的不同之处。</p>
-<p>测试 新设备推送设置</p>
+></td>
+</tr>
+</tbody>
+</table></div>
+<h1 id="给-foc-加上抗齿槽转矩一次从原地抖动到成功标定的实践">给 FOC 加上抗齿槽转矩：一次从“原地抖动”到成功标定的实践
+</h1><p>最近在 P-NUCLEO-IHM03、MS4015 电机和 MT6701 磁编码器组成的 FOC 平台上，实现了一套抗齿槽转矩功能。</p>
+<p>这个功能的最终效果不错，但实现过程并不是一次成功。尤其是最初照着“逐点定位并采样”的思路开发时，电机只会在原地快速抖动，始终无法完成第一个采样点。</p>
+<p>这篇文章不展开工程文件和全部参数，主要记录算法思路、踩过的坑，以及最后为什么改成了连续扫描。</p>
+<h2 id="一为什么要做抗齿槽转矩补偿">一、为什么要做抗齿槽转矩补偿
+</h2><p>永磁电机在低速运行时，常能感觉到转子在某些角度更容易停住。这种与机械角度相关的周期性转矩，会带来一些典型问题：</p>
+<ul>
+<li>低速运行不均匀；</li>
+<li>速度环容易出现周期性波动；</li>
+<li>位置环在目标附近轻微振荡；</li>
+<li>为克服局部阻力而提高积分后，又容易发生过冲。</li>
+</ul>
+<p>单纯继续提高 PI 或 PD 参数通常不能真正解决问题，因为齿槽转矩是一种与转子位置相关、可重复出现的扰动。</p>
+<p>更合适的方法是提前学习这种扰动，然后根据转子的机械角度增加一个补偿电流：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-text" data-lang="text"><span class="line"><span class="cl">最终 Iq = 闭环控制器输出 + 当前角度对应的前馈补偿
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>闭环控制器继续负责稳定和纠正误差，查表前馈则负责提前抵消周期性的齿槽转矩。</p>
+<h2 id="二算法设计来源">二、算法设计来源
+</h2><p>主要思路参考了 ODrive 开源固件中的 Anticogging 功能。</p>
+<p>ODrive 的基本思想是：让电机依次到达一圈内的各个位置，记录维持该位置所需要的转矩，然后生成一张与机械角度对应的补偿表。正常运行时，再根据编码器角度查表并叠加前馈。</p>
+<p>本项目同样采用了 3600 个采样点，也就是每 0.1° 一个补偿值。</p>
+<p>不过，我最终没有完全照搬“每个位置停稳后采样”的运动方式。原因是不同电机和机械系统的摩擦特性差别很大，适合 ODrive 原始应用场景的方法，并不一定能直接用于当前电机。</p>
+<p>参考资料：</p>
+<ul>
+<li><a class="link" href="https://github.com/odriverobotics/ODrive"  target="_blank" rel="noopener"
+    >ODrive 官方仓库</a></li>
+<li><a class="link" href="https://github.com/odriverobotics/ODrive/blob/master/Firmware/MotorControl/controller.cpp"  target="_blank" rel="noopener"
+    >ODrive 控制器源码</a></li>
+<li><a class="link" href="https://blog.csdn.net/loop222/article/details/134847403"  target="_blank" rel="noopener"
+    >CSDN 参考文章</a></li>
+<li><a class="link" href="https://zhuanlan.zhihu.com/p/1936345470315242384"  target="_blank" rel="noopener"
+    >知乎参考文章</a></li>
+</ul>
+<h2 id="三最初的方案逐点定位采样">三、最初的方案：逐点定位采样
+</h2><p>第一版设计比较直接：</p>
+<ol>
+<li>将一圈划分为 3600 个目标位置；</li>
+<li>让位置控制器依次移动 0.1°；</li>
+<li>等待转子在目标点附近稳定；</li>
+<li>记录保持该位置所需的 q 轴电流；</li>
+<li>完成整圈后保存补偿表。</li>
+</ol>
+<p>理论上很合理，但实机一运行，电机只在第一个目标点附近来回抖动，始终不能进入稳定状态。</p>
+<p>问题在于，0.1° 的目标间隔非常小，而这台电机克服静摩擦所需的电流并不小。电流逐渐增加后，转子不会只移动 0.1°，而是会突然越过目标；控制器发现过冲后立即给出反向电流，转子又越过目标返回。</p>
+<p>最终形成了下面的循环：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-text" data-lang="text"><span class="line"><span class="cl">静摩擦未突破
+</span></span><span class="line"><span class="cl">→ 电流持续增加
+</span></span><span class="line"><span class="cl">→ 转子突然越过目标
+</span></span><span class="line"><span class="cl">→ 控制器反向制动
+</span></span><span class="line"><span class="cl">→ 再次越过目标
+</span></span><span class="line"><span class="cl">→ 正反反复抖动
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>这不是简单延长等待时间就能解决的问题，因为转子从来没有真正稳定下来。</p>
+<h2 id="四第二次尝试加入独立的速度环">四、第二次尝试：加入独立的速度环
+</h2><p>为了让位置移动更平滑，第二版加入了专门用于标定的位置—速度—电流级联控制。</p>
+<p>结果电机依然没有完成第一个点，而且抖动频率更高了。诊断数据表明，转子在目标两侧快速越过，q 轴电流也不断切换到正、负限幅。</p>
+<p>这次测试反而确认了两件事：</p>
+<ul>
+<li>编码器方向和控制符号基本正确，因为越过目标后控制器会正确反向；</li>
+<li>真正的问题是“逐点静止采样”与当前机械系统的静摩擦特性不匹配。</li>
+</ul>
+<p>继续提高增益，只会让正反切换变得更快。继续增加滤波，也只能让现象变慢，无法改变每次突破静摩擦后必然越过微小目标的事实。</p>
+<p>因此第三版不再继续调逐点控制器，而是改变标定方式。</p>
+<h2 id="五最终方案低速连续扫描">五、最终方案：低速连续扫描
+</h2><p>最终采用的是低速、单方向、连续扫描一整圈：</p>
+<ol>
+<li>使用一套独立且比较保守的速度控制器；</li>
+<li>缓慢增加驱动电流，让电机平稳克服静摩擦；</li>
+<li>确认电机已经连续转动后，再锁定正式扫描起点；</li>
+<li>让电机以很低的速度单方向旋转一整圈；</li>
+<li>每经过一个 0.1° 区间，就记录该区间内的平均 q 轴电流；</li>
+<li>完成 3600 点后停止电机并保存结果；</li>
+<li>正常运行时，根据 MT6701 的单圈角度查表并进行插值。</li>
+</ol>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">flowchart LR
+</span></span><span class="line"><span class="cl">    A[&#34;缓慢起转&#34;] --&gt; B[&#34;确认连续运动&#34;]
+</span></span><span class="line"><span class="cl">    B --&gt; C[&#34;低速扫描一圈&#34;]
+</span></span><span class="line"><span class="cl">    C --&gt; D[&#34;按角度区间记录平均 Iq&#34;]
+</span></span><span class="line"><span class="cl">    D --&gt; E[&#34;去除整表平均值&#34;]
+</span></span><span class="line"><span class="cl">    E --&gt; F[&#34;保存补偿表&#34;]
+</span></span><span class="line"><span class="cl">    F --&gt; G[&#34;运行时查表前馈&#34;]
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>连续扫描不再要求电机精确停在每个 0.1° 目标点，因此绕开了最容易发生粘滑振荡的工作状态。</p>
+<p>为了避免电机在扫描过程中再次正反抖动，还加入了几个保护思路：</p>
+<ul>
+<li>驱动电流缓慢建立；</li>
+<li>减小电流时可以更快，但反向制动力受到严格限制；</li>
+<li>控制器包含抗积分饱和；</li>
+<li>只有确认电机已经连续起转，才开始正式记录数据；</li>
+<li>如果长时间没有新的角度进度，就自动停止并报告失败。</li>
+</ul>
+<h2 id="六为什么要对补偿表去均值">六、为什么要对补偿表去均值
+</h2><p>连续单方向旋转时，测得的电流不仅包含齿槽转矩，还包含轴承摩擦和其他近似恒定的负载。</p>
+<p>如果直接保存，就会在所有角度都附加一个固定方向的电流，这并不是我们想要的结果。</p>
+<p>因此完成一圈采样后，需要先计算整张表的平均值，再让每个采样点减去这个平均值：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-text" data-lang="text"><span class="line"><span class="cl">最终补偿值 = 原始采样值 - 全部采样点的平均值
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>这样可以去掉大部分恒定摩擦和直流偏置，保留随角度周期变化的部分。</p>
+<p>严格来说，这张表学习到的不一定只有纯粹的齿槽转矩。磁铁偏心、编码器安装误差和位置相关摩擦等可重复扰动，也可能被记录进去。但只要这些扰动与机械角度稳定对应，查表前馈仍然能够改善实际控制效果。</p>
+<h2 id="七这次遇到的主要-bug">七、这次遇到的主要 Bug
+</h2><div class="table-wrapper"><table>
+<thead>
+<tr>
+<th>问题</th>
+<th>表现</th>
+<th>原因与处理</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>新模块没有参与链接</td>
+<td>出现大量函数未定义错误</td>
+<td>新增源文件没有加入 IDE 构建列表，重新加载工程并加入源文件后解决</td>
+</tr>
+<tr>
+<td>第一个采样点超时</td>
+<td>电机原地抖动，进度始终为 0</td>
+<td>静摩擦突破后越过 0.1° 目标，逐点定位不适合当前系统</td>
+</tr>
+<tr>
+<td>加入级联控制后抖动更快</td>
+<td>电流在正负限幅之间快速切换</td>
+<td>控制器进入饱和，继续提高增益只会提高切换频率</td>
+</tr>
+<tr>
+<td>连续扫描中含有恒定摩擦</td>
+<td>整张表带有同方向偏置</td>
+<td>保存前减去整表平均值</td>
+</tr>
+<tr>
+<td>标定中断可能留下不完整数据</td>
+<td>重启后可能误用错误表格</td>
+<td>标定完成并停机后才保存，同时增加完整性校验</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="八最终效果">八、最终效果
+</h2><p>改成连续扫描后，电机不再停留在第一个点正反抖动，而是能够平稳地完成一整圈标定，并自动保存补偿结果。</p>
+<p>实际启用补偿后，低速和位置控制效果有了明显改善。这也说明查表前馈的方向是有效的，而最初失败的主要原因并不是算法思想错误，而是采集方式没有适配这台电机的静摩擦特性。</p>
+<h2 id="九这次调试得到的经验">九、这次调试得到的经验
+</h2><h3 id="1-不要只照搬算法流程">1. 不要只照搬算法流程
+</h3><p>同一个算法在不同电机、轴承、负载和编码器结构上，可能需要完全不同的标定运动方式。应保留核心思想，同时根据真实机械特性调整实现。</p>
+<h3 id="2-电机抖动不一定是增益太小">2. 电机抖动不一定是增益太小
+</h3><p>当电流已经频繁达到正负限幅时，继续提高 Kp 或 Ki 往往只会让抖动更激烈。此时应检查控制结构是否已经变成近似的正反开关控制。</p>
+<h3 id="3-静摩擦是低速标定的重要限制">3. 静摩擦是低速标定的重要限制
+</h3><p>如果目标位移小于突破静摩擦后的自然位移，逐点定位就很难稳定。连续扫描通常比反复停止更适合这种系统。</p>
+<h3 id="4-诊断数据比主观观察更可靠">4. 诊断数据比主观观察更可靠
+</h3><p>同时观察目标位置、实际位置、速度和 Iq，可以快速判断究竟是方向错误、编码器异常，还是控制器饱和。</p>
+<h3 id="5-前馈补偿不能替代闭环">5. 前馈补偿不能替代闭环
+</h3><p>抗齿槽表只是帮助闭环控制器减轻周期扰动，电流环、速度环和位置环本身仍然必须保持稳定。启用补偿后，也应该重新检查外环是否需要小幅调整。</p>
+<h2 id="十还可以继续改进什么">十、还可以继续改进什么
+</h2><p>当前版本已经达到比较好的实机效果，后续如果继续优化，可以考虑：</p>
+<ul>
+<li>正反两个方向分别扫描，进一步区分齿槽转矩和方向摩擦；</li>
+<li>连续扫描多圈后求平均，提高数据重复性；</li>
+<li>对补偿表进行周期平滑，减少局部噪声；</li>
+<li>为标定结果增加质量评分，自动拒绝异常数据；</li>
+<li>支持逐渐增加补偿比例，方便做启用前后的 A/B 对比。</li>
+</ul>
+<h2 id="结语">结语
+</h2><p>这次实现最重要的改进，不是找到了一组更大的控制参数，而是把标定方式从“每隔 0.1° 停下来”改成了“低速连续扫描”。</p>
+<p>核心经验可以概括为：</p>
+<blockquote>
+<p>当控制器无法在极小位置步长上战胜静摩擦时，不要继续强行提高增益；换一种不需要反复突破静摩擦的采集方式，往往更有效。</p>
+</blockquote>
+<p>最终保留了 ODrive 查表前馈的核心思想，又针对当前电机的实际特性完成了适配。这也正是开源算法落地到真实硬件时最有价值的部分。</p>
 
 </section>
 
@@ -491,13 +695,24 @@
         <div class="flex article-list--tile">
             
                 
-<article class="">
-    <a href="/p/%E6%8A%97%E9%BD%BF%E6%A7%BD%E8%BD%AC%E7%9F%A9%E7%AE%97%E6%B3%95%E7%9A%84%E4%B8%80%E6%AC%A1%E5%AE%9E%E7%8E%B0/">
+<article class="has-image">
+    <a href="/p/ch32%E5%B9%B3%E8%A1%A1%E8%BD%A6%E5%BC%80%E5%8F%91%E6%9D%BF/">
         
+        
+            <div class="article-image">
+                <img src="/p/ch32%E5%B9%B3%E8%A1%A1%E8%BD%A6%E5%BC%80%E5%8F%91%E6%9D%BF/mainboard.d1edfb05fc1b0fd8ed53d340829d1647.JPG" 
+                        width="4032" 
+                        height="2268" 
+                        loading="lazy"
+                        alt="Featured image of post CH32平衡车开发板"
+                        
+                        data-hash="md5-0e37BfwbD9jtU9NAgp0WRw==">
+                
+            </div>
         
 
         <div class="article-details">
-            <h2 class="article-title">抗齿槽转矩算法的一次实现</h2>
+            <h2 class="article-title">CH32平衡车开发板</h2>
         </div>
     </a>
 </article>
