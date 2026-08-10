@@ -8,11 +8,11 @@
         <language>zh-cn</language>
         <copyright>Sunjiyi Make and Design</copyright>
         <lastBuildDate>Mon, 10 Aug 2026 00:00:00 +0000</lastBuildDate><atom:link href="https://a233a2.github.io/post/index.xml" rel="self" type="application/rss+xml" /><item>
-        <title>抗齿槽转矩算法的一次实现</title>
-        <link>https://a233a2.github.io/p/%E6%8A%97%E9%BD%BF%E6%A7%BD%E8%BD%AC%E7%9F%A9%E7%AE%97%E6%B3%95%E7%9A%84%E4%B8%80%E6%AC%A1%E5%AE%9E%E7%8E%B0/</link>
+        <title>抗齿槽转矩算法的一次实现(Cogging Compensation)</title>
+        <link>https://a233a2.github.io/p/%E6%8A%97%E9%BD%BF%E6%A7%BD%E8%BD%AC%E7%9F%A9%E7%AE%97%E6%B3%95%E7%9A%84%E4%B8%80%E6%AC%A1%E5%AE%9E%E7%8E%B0cogging-compensation/</link>
         <pubDate>Mon, 10 Aug 2026 00:00:00 +0000</pubDate>
         
-        <guid>https://a233a2.github.io/p/%E6%8A%97%E9%BD%BF%E6%A7%BD%E8%BD%AC%E7%9F%A9%E7%AE%97%E6%B3%95%E7%9A%84%E4%B8%80%E6%AC%A1%E5%AE%9E%E7%8E%B0/</guid>
+        <guid>https://a233a2.github.io/p/%E6%8A%97%E9%BD%BF%E6%A7%BD%E8%BD%AC%E7%9F%A9%E7%AE%97%E6%B3%95%E7%9A%84%E4%B8%80%E6%AC%A1%E5%AE%9E%E7%8E%B0cogging-compensation/</guid>
         <description>&lt;p&gt;先来看实现低速跟踪效果，同一组PID参属下的两种形式：&lt;/p&gt;
 &lt;table&gt;
 &lt;thead&gt;
@@ -23,7 +23,7 @@
 &lt;/thead&gt;
 &lt;tbody&gt;
 &lt;tr&gt;
-&lt;td style=&#34;text-align:center&#34;&gt;&lt;img src=&#34;https://a233a2.github.io/p/%E6%8A%97%E9%BD%BF%E6%A7%BD%E8%BD%AC%E7%9F%A9%E7%AE%97%E6%B3%95%E7%9A%84%E4%B8%80%E6%AC%A1%E5%AE%9E%E7%8E%B0/%E5%85%B3%E9%97%AD%E8%A1%A5%E5%81%BF.png&#34;
+&lt;td style=&#34;text-align:center&#34;&gt;&lt;img src=&#34;https://a233a2.github.io/p/%E6%8A%97%E9%BD%BF%E6%A7%BD%E8%BD%AC%E7%9F%A9%E7%AE%97%E6%B3%95%E7%9A%84%E4%B8%80%E6%AC%A1%E5%AE%9E%E7%8E%B0cogging-compensation/%E5%85%B3%E9%97%AD%E8%A1%A5%E5%81%BF.png&#34;
 	width=&#34;838&#34;
 	height=&#34;1234&#34;
 	
@@ -37,7 +37,7 @@
 		data-flex-basis=&#34;162px&#34;
 	
 &gt;&lt;/td&gt;
-&lt;td style=&#34;text-align:center&#34;&gt;&lt;img src=&#34;https://a233a2.github.io/p/%E6%8A%97%E9%BD%BF%E6%A7%BD%E8%BD%AC%E7%9F%A9%E7%AE%97%E6%B3%95%E7%9A%84%E4%B8%80%E6%AC%A1%E5%AE%9E%E7%8E%B0/%E5%BC%80%E5%90%AF%E8%A1%A5%E5%81%BF.png&#34;
+&lt;td style=&#34;text-align:center&#34;&gt;&lt;img src=&#34;https://a233a2.github.io/p/%E6%8A%97%E9%BD%BF%E6%A7%BD%E8%BD%AC%E7%9F%A9%E7%AE%97%E6%B3%95%E7%9A%84%E4%B8%80%E6%AC%A1%E5%AE%9E%E7%8E%B0cogging-compensation/%E5%BC%80%E5%90%AF%E8%A1%A5%E5%81%BF.png&#34;
 	width=&#34;840&#34;
 	height=&#34;1231&#34;
 	
@@ -55,7 +55,7 @@
 &lt;/tbody&gt;
 &lt;/table&gt;
 &lt;h1 id=&#34;给-foc-加上抗齿槽转矩一次从原地抖动到成功标定的实践&#34;&gt;给 FOC 加上抗齿槽转矩：一次从“原地抖动”到成功标定的实践
-&lt;/h1&gt;&lt;p&gt;最近在 P-NUCLEO-IHM03、MS4015 电机和 MT6701 磁编码器组成的 FOC 平台上，实现了一套抗齿槽转矩功能，效果非常不错，故分享一下。&lt;/p&gt;
+&lt;/h1&gt;&lt;p&gt;最近在 P-NUCLEO-IHM03、MS4015 云台电机和 MT6701 磁编码器组成的 FOC 平台上，因为前期写完了FOC驱动代码，电流环性能调的非常好了已经，但是&lt;strong&gt;低速控制下速度环参数不知道什么问题整定一直没调好&lt;/strong&gt;，故引入了一套抗齿槽转矩的功能，实测对低速下的优化效果非常不错，故分享一下。&lt;/p&gt;
 &lt;h2 id=&#34;为什么要做抗齿槽转矩补偿&#34;&gt;为什么要做抗齿槽转矩补偿
 &lt;/h2&gt;&lt;p&gt;永磁电机在低速运行时，常能感觉到转子在某些角度更容易停住。这种与机械角度相关的周期性转矩，会带来一些典型问题：&lt;/p&gt;
 &lt;ul&gt;
@@ -64,8 +64,8 @@
 &lt;li&gt;位置环在目标附近轻微振荡；&lt;/li&gt;
 &lt;li&gt;为克服局部阻力而提高积分后，又容易发生过冲。&lt;/li&gt;
 &lt;/ul&gt;
-&lt;p&gt;单纯继续提高 PI 或 PD 参数通常不能真正解决问题，因为齿槽转矩是一种与转子位置相关、可重复出现的扰动。&lt;/p&gt;
-&lt;p&gt;更合适的方法是提前学习这种扰动，然后根据转子的机械角度增加一个补偿电流：&lt;/p&gt;
+&lt;p&gt;单纯继续提高 PI 或 PD 参数通常不能真正解决问题，因为&lt;strong&gt;齿槽转矩是一种与转子位置相关、可重复出现的扰动。&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;更合适的方法是&lt;strong&gt;提前学习这种扰动，然后根据转子的机械角度增加一个补偿电流&lt;/strong&gt;，也就是前馈补偿：&lt;/p&gt;
 &lt;div class=&#34;highlight&#34;&gt;&lt;div class=&#34;chroma&#34;&gt;
 &lt;table class=&#34;lntable&#34;&gt;&lt;tr&gt;&lt;td class=&#34;lntd&#34;&gt;
 &lt;pre tabindex=&#34;0&#34; class=&#34;chroma&#34;&gt;&lt;code&gt;&lt;span class=&#34;lnt&#34;&gt;1
@@ -74,7 +74,7 @@
 &lt;pre tabindex=&#34;0&#34; class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-text&#34; data-lang=&#34;text&#34;&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;最终 Iq = 闭环控制器输出 + 当前角度对应的前馈补偿
 &lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;
 &lt;/div&gt;
-&lt;/div&gt;&lt;p&gt;闭环控制器继续负责稳定和纠正误差，查表前馈则负责提前抵消周期性的齿槽转矩。&lt;/p&gt;
+&lt;/div&gt;&lt;p&gt;闭环控制器继续负责稳定和纠正误差，查表前馈则负责提前抵消周期性的齿槽转矩。查表法也是一种工程上被最广泛使用的方法吧，抑制齿槽转矩其实还有更好的方案，例如使用数学方法，如谐波函数补偿，学术界更是有很多牛上天的方法，但是此处就先使用工程上被验证过多次的查表法。&lt;/p&gt;
 &lt;h2 id=&#34;算法设计来源&#34;&gt;算法设计来源
 &lt;/h2&gt;&lt;p&gt;主要思路参考了 ODrive 开源固件中的 Anticogging 功能。&lt;/p&gt;
 &lt;p&gt;ODrive 的基本思想是：让电机依次到达一圈内的各个位置，记录维持该位置所需要的转矩，然后生成一张与机械角度对应的补偿表。正常运行时，再根据编码器角度查表并叠加前馈。&lt;/p&gt;

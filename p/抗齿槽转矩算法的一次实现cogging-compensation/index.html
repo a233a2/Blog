@@ -2,16 +2,16 @@
 <html lang="zh-cn" dir="ltr">
     <head><meta charset='utf-8'>
 <meta name='viewport' content='width=device-width, initial-scale=1'><meta name='description' content="在FOC云台驱动代码开发时，由于低速跟踪性能不理想，故引入抗齿槽转矩算法，参考ODrive开源方案使用经典查表实现。">
-<title>抗齿槽转矩算法的一次实现</title>
+<title>抗齿槽转矩算法的一次实现(Cogging Compensation)</title>
 
-<link rel='canonical' href='https://a233a2.github.io/p/%E6%8A%97%E9%BD%BF%E6%A7%BD%E8%BD%AC%E7%9F%A9%E7%AE%97%E6%B3%95%E7%9A%84%E4%B8%80%E6%AC%A1%E5%AE%9E%E7%8E%B0/'>
+<link rel='canonical' href='https://a233a2.github.io/p/%E6%8A%97%E9%BD%BF%E6%A7%BD%E8%BD%AC%E7%9F%A9%E7%AE%97%E6%B3%95%E7%9A%84%E4%B8%80%E6%AC%A1%E5%AE%9E%E7%8E%B0cogging-compensation/'>
 
-<link rel="stylesheet" href="/scss/style.min.b55b4e384ea3dd27cabc721a2a0c1ae7bb22640ecbd265cb9e3b3d4f9aba26ec.css"><meta property='og:title' content="抗齿槽转矩算法的一次实现">
+<link rel="stylesheet" href="/scss/style.min.b55b4e384ea3dd27cabc721a2a0c1ae7bb22640ecbd265cb9e3b3d4f9aba26ec.css"><meta property='og:title' content="抗齿槽转矩算法的一次实现(Cogging Compensation)">
 <meta property='og:description' content="在FOC云台驱动代码开发时，由于低速跟踪性能不理想，故引入抗齿槽转矩算法，参考ODrive开源方案使用经典查表实现。">
-<meta property='og:url' content='https://a233a2.github.io/p/%E6%8A%97%E9%BD%BF%E6%A7%BD%E8%BD%AC%E7%9F%A9%E7%AE%97%E6%B3%95%E7%9A%84%E4%B8%80%E6%AC%A1%E5%AE%9E%E7%8E%B0/'>
+<meta property='og:url' content='https://a233a2.github.io/p/%E6%8A%97%E9%BD%BF%E6%A7%BD%E8%BD%AC%E7%9F%A9%E7%AE%97%E6%B3%95%E7%9A%84%E4%B8%80%E6%AC%A1%E5%AE%9E%E7%8E%B0cogging-compensation/'>
 <meta property='og:site_name' content='sunjiyi&#39;s Blogggg'>
-<meta property='og:type' content='article'><meta property='article:section' content='Post' /><meta property='article:tag' content='直流电机方案' /><meta property='article:tag' content='Balance' /><meta property='article:published_time' content='2026-08-10T00:00:00&#43;00:00'/><meta property='article:modified_time' content='2026-08-10T00:00:00&#43;00:00'/>
-<meta name="twitter:title" content="抗齿槽转矩算法的一次实现">
+<meta property='og:type' content='article'><meta property='article:section' content='Post' /><meta property='article:tag' content='FOC' /><meta property='article:tag' content='抗齿槽转矩算法' /><meta property='article:tag' content='ODrive' /><meta property='article:published_time' content='2026-08-10T00:00:00&#43;00:00'/><meta property='article:modified_time' content='2026-08-10T00:00:00&#43;00:00'/>
+<meta name="twitter:title" content="抗齿槽转矩算法的一次实现(Cogging Compensation)">
 <meta name="twitter:description" content="在FOC云台驱动代码开发时，由于低速跟踪性能不理想，故引入抗齿槽转矩算法，参考ODrive开源方案使用经典查表实现。">
     <link rel="shortcut icon" href="/static/favicon.ico" />
 
@@ -326,7 +326,7 @@
 
     <div class="article-title-wrapper">
         <h2 class="article-title">
-            <a href="/p/%E6%8A%97%E9%BD%BF%E6%A7%BD%E8%BD%AC%E7%9F%A9%E7%AE%97%E6%B3%95%E7%9A%84%E4%B8%80%E6%AC%A1%E5%AE%9E%E7%8E%B0/">抗齿槽转矩算法的一次实现</a>
+            <a href="/p/%E6%8A%97%E9%BD%BF%E6%A7%BD%E8%BD%AC%E7%9F%A9%E7%AE%97%E6%B3%95%E7%9A%84%E4%B8%80%E6%AC%A1%E5%AE%9E%E7%8E%B0cogging-compensation/">抗齿槽转矩算法的一次实现(Cogging Compensation)</a>
         </h2>
     
         
@@ -392,7 +392,7 @@
 </thead>
 <tbody>
 <tr>
-<td style="text-align:center"><img src="/p/%E6%8A%97%E9%BD%BF%E6%A7%BD%E8%BD%AC%E7%9F%A9%E7%AE%97%E6%B3%95%E7%9A%84%E4%B8%80%E6%AC%A1%E5%AE%9E%E7%8E%B0/%E5%85%B3%E9%97%AD%E8%A1%A5%E5%81%BF.png"
+<td style="text-align:center"><img src="/p/%E6%8A%97%E9%BD%BF%E6%A7%BD%E8%BD%AC%E7%9F%A9%E7%AE%97%E6%B3%95%E7%9A%84%E4%B8%80%E6%AC%A1%E5%AE%9E%E7%8E%B0cogging-compensation/%E5%85%B3%E9%97%AD%E8%A1%A5%E5%81%BF.png"
 	width="838"
 	height="1234"
 	
@@ -406,7 +406,7 @@
 		data-flex-basis="162px"
 	
 ></td>
-<td style="text-align:center"><img src="/p/%E6%8A%97%E9%BD%BF%E6%A7%BD%E8%BD%AC%E7%9F%A9%E7%AE%97%E6%B3%95%E7%9A%84%E4%B8%80%E6%AC%A1%E5%AE%9E%E7%8E%B0/%E5%BC%80%E5%90%AF%E8%A1%A5%E5%81%BF.png"
+<td style="text-align:center"><img src="/p/%E6%8A%97%E9%BD%BF%E6%A7%BD%E8%BD%AC%E7%9F%A9%E7%AE%97%E6%B3%95%E7%9A%84%E4%B8%80%E6%AC%A1%E5%AE%9E%E7%8E%B0cogging-compensation/%E5%BC%80%E5%90%AF%E8%A1%A5%E5%81%BF.png"
 	width="840"
 	height="1231"
 	
@@ -424,7 +424,7 @@
 </tbody>
 </table></div>
 <h1 id="给-foc-加上抗齿槽转矩一次从原地抖动到成功标定的实践">给 FOC 加上抗齿槽转矩：一次从“原地抖动”到成功标定的实践
-</h1><p>最近在 P-NUCLEO-IHM03、MS4015 电机和 MT6701 磁编码器组成的 FOC 平台上，实现了一套抗齿槽转矩功能，效果非常不错，故分享一下。</p>
+</h1><p>最近在 P-NUCLEO-IHM03、MS4015 云台电机和 MT6701 磁编码器组成的 FOC 平台上，因为前期写完了FOC驱动代码，电流环性能调的非常好了已经，但是<strong>低速控制下速度环参数不知道什么问题整定一直没调好</strong>，故引入了一套抗齿槽转矩的功能，实测对低速下的优化效果非常不错，故分享一下。</p>
 <h2 id="为什么要做抗齿槽转矩补偿">为什么要做抗齿槽转矩补偿
 </h2><p>永磁电机在低速运行时，常能感觉到转子在某些角度更容易停住。这种与机械角度相关的周期性转矩，会带来一些典型问题：</p>
 <ul>
@@ -433,8 +433,8 @@
 <li>位置环在目标附近轻微振荡；</li>
 <li>为克服局部阻力而提高积分后，又容易发生过冲。</li>
 </ul>
-<p>单纯继续提高 PI 或 PD 参数通常不能真正解决问题，因为齿槽转矩是一种与转子位置相关、可重复出现的扰动。</p>
-<p>更合适的方法是提前学习这种扰动，然后根据转子的机械角度增加一个补偿电流：</p>
+<p>单纯继续提高 PI 或 PD 参数通常不能真正解决问题，因为<strong>齿槽转矩是一种与转子位置相关、可重复出现的扰动。</strong></p>
+<p>更合适的方法是<strong>提前学习这种扰动，然后根据转子的机械角度增加一个补偿电流</strong>，也就是前馈补偿：</p>
 <div class="highlight"><div class="chroma">
 <table class="lntable"><tr><td class="lntd">
 <pre tabindex="0" class="chroma"><code><span class="lnt">1
@@ -443,7 +443,7 @@
 <pre tabindex="0" class="chroma"><code class="language-text" data-lang="text"><span class="line"><span class="cl">最终 Iq = 闭环控制器输出 + 当前角度对应的前馈补偿
 </span></span></code></pre></td></tr></table>
 </div>
-</div><p>闭环控制器继续负责稳定和纠正误差，查表前馈则负责提前抵消周期性的齿槽转矩。</p>
+</div><p>闭环控制器继续负责稳定和纠正误差，查表前馈则负责提前抵消周期性的齿槽转矩。查表法也是一种工程上被最广泛使用的方法吧，抑制齿槽转矩其实还有更好的方案，例如使用数学方法，如谐波函数补偿，学术界更是有很多牛上天的方法，但是此处就先使用工程上被验证过多次的查表法。</p>
 <h2 id="算法设计来源">算法设计来源
 </h2><p>主要思路参考了 ODrive 开源固件中的 Anticogging 功能。</p>
 <p>ODrive 的基本思想是：让电机依次到达一圈内的各个位置，记录维持该位置所需要的转矩，然后生成一张与机械角度对应的补偿表。正常运行时，再根据编码器角度查表并叠加前馈。</p>
@@ -543,9 +543,11 @@
     
     <section class="article-tags">
         
-            <a href="/tags/%E7%9B%B4%E6%B5%81%E7%94%B5%E6%9C%BA%E6%96%B9%E6%A1%88/">直流电机方案</a>
+            <a href="/tags/foc/">FOC</a>
         
-            <a href="/tags/balance/">Balance</a>
+            <a href="/tags/%E6%8A%97%E9%BD%BF%E6%A7%BD%E8%BD%AC%E7%9F%A9%E7%AE%97%E6%B3%95/">抗齿槽转矩算法</a>
+        
+            <a href="/tags/odrive/">ODrive</a>
         
     </section>
 
@@ -602,30 +604,6 @@
         <div class="flex article-list--tile">
             
                 
-<article class="has-image">
-    <a href="/p/ch32%E5%B9%B3%E8%A1%A1%E8%BD%A6%E5%BC%80%E5%8F%91%E6%9D%BF/">
-        
-        
-            <div class="article-image">
-                <img src="/p/ch32%E5%B9%B3%E8%A1%A1%E8%BD%A6%E5%BC%80%E5%8F%91%E6%9D%BF/mainboard.d1edfb05fc1b0fd8ed53d340829d1647.JPG" 
-                        width="4032" 
-                        height="2268" 
-                        loading="lazy"
-                        alt="Featured image of post CH32平衡车开发板"
-                        
-                        data-hash="md5-0e37BfwbD9jtU9NAgp0WRw==">
-                
-            </div>
-        
-
-        <div class="article-details">
-            <h2 class="article-title">CH32平衡车开发板</h2>
-        </div>
-    </a>
-</article>
-
-            
-                
 <article class="">
     <a href="/p/%E7%8E%AF%E5%BD%A2%E7%BC%93%E5%86%B2%E5%8C%BA-%E5%8D%95%E7%89%87%E6%9C%BA%E4%B8%B2%E5%8F%A3%E6%94%B6%E5%8F%91%E7%9A%84%E4%B8%80%E4%B8%AA%E5%A5%BD%E7%9A%84%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88/">
         
@@ -633,43 +611,6 @@
 
         <div class="article-details">
             <h2 class="article-title">环形缓冲区-单片机串口收发的一个好的解决方案</h2>
-        </div>
-    </a>
-</article>
-
-            
-                
-<article class="has-image">
-    <a href="/p/%E4%B8%BA%E4%BB%80%E4%B9%88%E9%80%9A%E8%BF%87%E9%98%B6%E8%B7%83%E5%93%8D%E5%BA%94%E5%8F%AF%E4%BB%A5%E4%BC%B0%E7%AE%97%E7%94%B5%E6%B5%81%E7%8E%AF%E5%B8%A6%E5%AE%BD/">
-        
-        
-            <div class="article-image">
-                <img src="/p/%E4%B8%BA%E4%BB%80%E4%B9%88%E9%80%9A%E8%BF%87%E9%98%B6%E8%B7%83%E5%93%8D%E5%BA%94%E5%8F%AF%E4%BB%A5%E4%BC%B0%E7%AE%97%E7%94%B5%E6%B5%81%E7%8E%AF%E5%B8%A6%E5%AE%BD/current-loop-step.6a242ba669d6006ba176f5b4c809bed8.png" 
-                        width="1380" 
-                        height="764" 
-                        loading="lazy"
-                        alt="Featured image of post 为什么通过阶跃响应可以估算电流环带宽？"
-                        
-                        data-hash="md5-aiQrpmnWAGuhdvW0yAm&#43;2A==">
-                
-            </div>
-        
-
-        <div class="article-details">
-            <h2 class="article-title">为什么通过阶跃响应可以估算电流环带宽？</h2>
-        </div>
-    </a>
-</article>
-
-            
-                
-<article class="">
-    <a href="/p/%E6%8E%A7%E5%88%B6%E7%B3%BB%E7%BB%9F%E8%BE%A8%E8%AF%86-%E6%89%AB%E9%A2%91%E6%B5%8B%E8%AF%95/">
-        
-        
-
-        <div class="article-details">
-            <h2 class="article-title">控制系统辨识-扫频测试</h2>
         </div>
     </a>
 </article>
@@ -694,6 +635,78 @@
 
         <div class="article-details">
             <h2 class="article-title">DengFOCV3P尝试部署MFPCC算法</h2>
+        </div>
+    </a>
+</article>
+
+            
+                
+<article class="has-image">
+    <a href="/p/cm_foc%E9%A9%B1%E5%8A%A8%E5%99%A8v2.0/">
+        
+        
+            <div class="article-image">
+                <img src="/p/cm_foc%E9%A9%B1%E5%8A%A8%E5%99%A8v2.0/1.4.ae01da38c57c9b1194a90bf90ab7f422.jpg" 
+                        width="2276" 
+                        height="1280" 
+                        loading="lazy"
+                        alt="Featured image of post CM_FOC驱动器V2.0"
+                        
+                        data-hash="md5-rgHaOMV8mxGUqQv5Crf0Ig==">
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">CM_FOC驱动器V2.0</h2>
+        </div>
+    </a>
+</article>
+
+            
+                
+<article class="has-image">
+    <a href="/p/cm_foc%E9%A9%B1%E5%8A%A8%E5%99%A8/">
+        
+        
+            <div class="article-image">
+                <img src="/p/cm_foc%E9%A9%B1%E5%8A%A8%E5%99%A8/cm_foc_real2.47063dc51223e0f647adf38288dd9a6f.png" 
+                        width="1056" 
+                        height="672" 
+                        loading="lazy"
+                        alt="Featured image of post CM_FOC驱动器"
+                        
+                        data-hash="md5-RwY9xRIj4PZHrfOCiN2abw==">
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">CM_FOC驱动器</h2>
+        </div>
+    </a>
+</article>
+
+            
+                
+<article class="has-image">
+    <a href="/p/%E4%B8%BA%E4%BB%80%E4%B9%88%E9%80%9A%E8%BF%87%E9%98%B6%E8%B7%83%E5%93%8D%E5%BA%94%E5%8F%AF%E4%BB%A5%E4%BC%B0%E7%AE%97%E7%94%B5%E6%B5%81%E7%8E%AF%E5%B8%A6%E5%AE%BD/">
+        
+        
+            <div class="article-image">
+                <img src="/p/%E4%B8%BA%E4%BB%80%E4%B9%88%E9%80%9A%E8%BF%87%E9%98%B6%E8%B7%83%E5%93%8D%E5%BA%94%E5%8F%AF%E4%BB%A5%E4%BC%B0%E7%AE%97%E7%94%B5%E6%B5%81%E7%8E%AF%E5%B8%A6%E5%AE%BD/current-loop-step.6a242ba669d6006ba176f5b4c809bed8.png" 
+                        width="1380" 
+                        height="764" 
+                        loading="lazy"
+                        alt="Featured image of post 为什么通过阶跃响应可以估算电流环带宽？"
+                        
+                        data-hash="md5-aiQrpmnWAGuhdvW0yAm&#43;2A==">
+                
+            </div>
+        
+
+        <div class="article-details">
+            <h2 class="article-title">为什么通过阶跃响应可以估算电流环带宽？</h2>
         </div>
     </a>
 </article>

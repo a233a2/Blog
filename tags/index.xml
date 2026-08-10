@@ -8,19 +8,27 @@
         <language>zh-cn</language>
         <copyright>Sunjiyi Make and Design</copyright>
         <lastBuildDate>Mon, 10 Aug 2026 00:00:00 +0000</lastBuildDate><atom:link href="https://a233a2.github.io/tags/index.xml" rel="self" type="application/rss+xml" /><item>
-        <title>Balance</title>
-        <link>https://a233a2.github.io/tags/balance/</link>
+        <title>FOC</title>
+        <link>https://a233a2.github.io/tags/foc/</link>
         <pubDate>Mon, 10 Aug 2026 00:00:00 +0000</pubDate>
         
-        <guid>https://a233a2.github.io/tags/balance/</guid>
+        <guid>https://a233a2.github.io/tags/foc/</guid>
         <description></description>
         </item>
         <item>
-        <title>直流电机方案</title>
-        <link>https://a233a2.github.io/tags/%E7%9B%B4%E6%B5%81%E7%94%B5%E6%9C%BA%E6%96%B9%E6%A1%88/</link>
+        <title>ODrive</title>
+        <link>https://a233a2.github.io/tags/odrive/</link>
         <pubDate>Mon, 10 Aug 2026 00:00:00 +0000</pubDate>
         
-        <guid>https://a233a2.github.io/tags/%E7%9B%B4%E6%B5%81%E7%94%B5%E6%9C%BA%E6%96%B9%E6%A1%88/</guid>
+        <guid>https://a233a2.github.io/tags/odrive/</guid>
+        <description></description>
+        </item>
+        <item>
+        <title>抗齿槽转矩算法</title>
+        <link>https://a233a2.github.io/tags/%E6%8A%97%E9%BD%BF%E6%A7%BD%E8%BD%AC%E7%9F%A9%E7%AE%97%E6%B3%95/</link>
+        <pubDate>Mon, 10 Aug 2026 00:00:00 +0000</pubDate>
+        
+        <guid>https://a233a2.github.io/tags/%E6%8A%97%E9%BD%BF%E6%A7%BD%E8%BD%AC%E7%9F%A9%E7%AE%97%E6%B3%95/</guid>
         <description></description>
         </item>
         <item>
@@ -37,14 +45,6 @@
         <pubDate>Fri, 31 Jul 2026 00:00:00 +0000</pubDate>
         
         <guid>https://a233a2.github.io/tags/c%E8%AF%AD%E8%A8%80/</guid>
-        <description></description>
-        </item>
-        <item>
-        <title>FOC</title>
-        <link>https://a233a2.github.io/tags/foc/</link>
-        <pubDate>Fri, 31 Jul 2026 00:00:00 +0000</pubDate>
-        
-        <guid>https://a233a2.github.io/tags/foc/</guid>
         <description></description>
         </item>
         <item>
@@ -213,6 +213,22 @@
         <pubDate>Mon, 16 Sep 2024 00:00:00 +0000</pubDate>
         
         <guid>https://a233a2.github.io/tags/ysyx/</guid>
+        <description></description>
+        </item>
+        <item>
+        <title>Balance</title>
+        <link>https://a233a2.github.io/tags/balance/</link>
+        <pubDate>Mon, 15 Jul 2024 00:00:00 +0000</pubDate>
+        
+        <guid>https://a233a2.github.io/tags/balance/</guid>
+        <description></description>
+        </item>
+        <item>
+        <title>直流电机方案</title>
+        <link>https://a233a2.github.io/tags/%E7%9B%B4%E6%B5%81%E7%94%B5%E6%9C%BA%E6%96%B9%E6%A1%88/</link>
+        <pubDate>Mon, 15 Jul 2024 00:00:00 +0000</pubDate>
+        
+        <guid>https://a233a2.github.io/tags/%E7%9B%B4%E6%B5%81%E7%94%B5%E6%9C%BA%E6%96%B9%E6%A1%88/</guid>
         <description></description>
         </item>
         
