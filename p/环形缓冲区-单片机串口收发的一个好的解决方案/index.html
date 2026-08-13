@@ -395,7 +395,7 @@
 
 
                 <time class="article-time--reading">
-                    阅读时长: 7 分钟
+                    阅读时长: 11 分钟
                 </time>
             </div>
         
@@ -546,7 +546,8 @@
 <li>中断中只做<strong>最少的操作</strong>（存字节、移动指针），不解析命令</li>
 </ul>
 <h4 id="33-为什么不用-dma-接收">3.3 为什么不用 DMA 接收？
-</h4><p>这个工程<strong>没有使用 DMA 接收串口数据</strong>，而是用<strong>中断方式逐字节接收</strong>。原因：</p>
+</h4><p>当然 DMA也可以配合环形缓冲区进行设计的。
+这个工程<strong>没有使用 DMA 接收串口数据</strong>，而是用<strong>中断方式逐字节接收</strong>。原因：</p>
 <ol>
 <li>串口命令是<strong>不定长、以回车换行结尾</strong>的文本行，DMA 适合定长接收</li>
 <li>中断方式每字节只做一次内存拷贝（约几十个 CPU 周期），开销极小</li>
@@ -593,7 +594,7 @@
 <td class="lntd">
 <pre tabindex="0" class="chroma"><code class="language-c" data-lang="c"><span class="line"><span class="cl"><span class="k">static</span> <span class="kt">void</span> <span class="nf">AppSerial_StartNextTransmit</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
 </span></span><span class="line"><span class="cl"><span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="c1">// 计算从当前读指针到缓冲区末尾的连续数据长度
+</span></span><span class="line"><span class="cl">    <span class="c1">// **计算从当前读指针到缓冲区末尾的连续数据长度**
 </span></span></span><span class="line"><span class="cl"><span class="c1"></span>    <span class="k">const</span> <span class="kt">uint16_t</span> <span class="n">contiguous</span> <span class="o">=</span> <span class="p">(</span><span class="n">g_tx_write</span> <span class="o">&gt;</span> <span class="n">g_tx_read</span><span class="p">)</span>
 </span></span><span class="line"><span class="cl">        <span class="o">?</span> <span class="p">(</span><span class="kt">uint16_t</span><span class="p">)(</span><span class="n">g_tx_write</span> <span class="o">-</span> <span class="n">g_tx_read</span><span class="p">)</span>
 </span></span><span class="line"><span class="cl">        <span class="o">:</span> <span class="p">(</span><span class="kt">uint16_t</span><span class="p">)(</span><span class="n">APP_TX_RING_SIZE</span> <span class="o">-</span> <span class="n">g_tx_read</span><span class="p">);</span>
@@ -609,7 +610,35 @@
 </span></span><span class="line"><span class="cl"><span class="p">}</span>
 </span></span></code></pre></td></tr></table>
 </div>
-</div><h4 id="43-发送完成回调">4.3 发送完成回调
+</div><p>这段比较巧妙，在此作下笔记：<strong>HAL 库的 HAL_UART_Transmit_IT 发送函数，要求传入的内存空间必须是“物理上连续的一块数组”。<strong>但是，环形缓冲区在物理上是一个首尾相连的固定数组。当数据存满数组尾部时，新数据会绕回数组的头部。这就导致</strong>待发送的数据在内存里可能被“切成了两截”。</strong></p>
+<p>这行代码的作用，就是计算出当前这“第一截”物理连续的数据到底有多长。</p>
+<p>APP_TX_RING_SIZE：数组的总长度（比如 8，下标是 0 ~ 7），在我的工程中是2048U。</p>
+<p>g_tx_write：发送数据的写指针（下一个要写入数据的下标）。</p>
+<p>g_tx_read：发送数据的读指针（下一个要发送数据的下标）。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-c" data-lang="c"><span class="line"><span class="cl">    <span class="k">const</span> <span class="kt">uint16_t</span> <span class="n">contiguous</span> <span class="o">=</span> <span class="p">(</span><span class="n">g_tx_write</span> <span class="o">&gt;</span> <span class="n">g_tx_read</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="o">?</span> <span class="p">(</span><span class="kt">uint16_t</span><span class="p">)(</span><span class="n">g_tx_write</span> <span class="o">-</span> <span class="n">g_tx_read</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="o">:</span> <span class="p">(</span><span class="kt">uint16_t</span><span class="p">)(</span><span class="n">APP_TX_RING_SIZE</span> <span class="o">-</span> <span class="n">g_tx_read</span><span class="p">);</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>数据在内存中是一整块连续的，没有跨过数组末尾。</p>
+<p>若数据没有“回绕”（g_tx_write &gt; g_tx_read），则待发数据是一整块，直接计算出长度一次性全都发出去。</p>
+<p>若数据“回绕”了（g_tx_write &lt;= g_tx_read），写指针已经绕回到了数组开头，待发送的数据被断成了两截：</p>
+<p>第一截：从 g_tx_read 开始，一直到数组末尾（APP_TX_RING_SIZE - 1）。</p>
+<p>第二截：从数组开头 0 开始，一直到 g_tx_write - 1。</p>
+<p>待发送数据跑到了数组前方。因为 HAL_UART_Transmit_IT 只能发连续内存，所以这次只能先把数组末尾的“第一截”发掉。</p>
+<p>剩下的“第二截，代码设计非常精妙，它利用了中断接力。第一截长度 contiguous，把长度为第一截长度 contiguous的数据发出去。 硬件串口把这 3 个字节发完后，触发 AppSerial_OnTxComplete 发送完成中断。中断回调函数把读指针推进：g_tx_read（读指针自动回绕到了 0！见下方的发送完成回调函数）。</p>
+<p>紧接着回调函数再次调用 StartNextTransmit()：
+此时 g_tx_read = 0，g_tx_write（此时无回绕），算出 contiguous ，自动把剩下的第二截顺畅地发送出去！</p>
+<p>自动把剩下的第二截 &lsquo;E&rsquo;,&lsquo;F&rsquo; 顺畅地发送出去！</p>
+<p>用极简的代码，完美解决了环形缓冲区内存不连续的痛点。</p>
+<h4 id="43-发送完成回调">4.3 发送完成回调
 </h4><div class="highlight"><div class="chroma">
 <table class="lntable"><tr><td class="lntd">
 <pre tabindex="0" class="chroma"><code><span class="lnt"> 1
@@ -665,6 +694,32 @@
 </span></span></code></pre></td></tr></table>
 </div>
 </div><p>使用 <code>vsnprintf</code> 支持类似 <code>printf</code> 的格式化输出，但输出到内存缓冲区而不是直接发送。</p>
+<p>发送的时候，是单片机主导的。它可以提前算好 contiguous 长度。他不像接收数据那样，每次接收回调函数中只收1U，而是算出 contiguous 长度，一次性丢给HAL库的HAL_UART_Transmit_IT 发送函数去发送。直接把一整块连续内存丢给硬件，让硬件自己去逐字节发送。</p>
+<p><strong>再简单说一下</strong></p>
+<p>因为接收数据，CPU必须“被动”的单字节处理，因为不知道外部什么时候会发，也不知道外部一次发送多少字节。</p>
+<p>硬件每收到 1 个字节，就会拉响一次“中断警报”（HAL_UART_Receive_IT），CPU 就得立刻放下手头的工作，跑进中断服务函数把这 1 个字节抓进环形缓冲区。</p>
+<p>而发送：CPU 可以“主动”批量打包交接，因为数据是单片机自己生成的（比如你要打印一行日志 160 字节）。单片机非常清楚这块数据在内存里的起始地址和字节长度。</p>
+<p>只需要调用一次：<code>HAL_UART_Transmit_IT(g_uart, &amp;g_tx_ring[g_tx_read], contiguous);</code>交给了 STM32 的 UART 硬件外设。</p>
+<p>ART 硬件控制器接管后，会在后台以固定的波特率（如 115200），自己在硬件电路上一位一位、一个字节一个字节地把这 100 个字节吐给 TX 引脚。</p>
+<p><strong>更深层次的</strong></p>
+<p><strong>硬件UART传输是不占 CPU 时间的</strong>，STM32 内部的 UART（串口）是一个独立于 CPU 核心之外的硬件外设（有自己独立的移位寄存器、数据寄存器和波特率发生器）。</p>
+<p>执行到代码AL_UART_Transmit_IT，CPU 做的唯一一件事，就是把内存地址和数据填入 UART 外设的寄存器里，并开启 UART 的发送中断。填完寄存器后（耗时仅几个 CPU 周期），CPU 就可以立刻退出这个函数去做其他任务。期间UART硬件外设会自己一位一位从TX引脚拉高拉低去发送数据。</p>
+<p>只有在这一整块数据（contiguous 字节）全部发完的那一刻，UART 硬件才会拉响一次中断（即 AppSerial_OnTxComplete），通知 CPU：“我发完了，你要发下一段吗？”</p>
+<p>只要配置得当，串口发送绝不可能<strong>卡顿电流环</strong>。NVIC（向量中断控制器）中，UART串口发送/接收的中断 被配置为较低优先级，比如Priority 3 或 4。</p>
+<ol start="4">
+<li>极致追求：如果想连这“1次中断”的开销都省掉？如果在极端的电机控制算法中，你连串口发完触发的那一次中断响应（大约几十个 CPU 周期）都不想给它，可以将发送方式升级为 UART + DMA（直接内存访问）：</li>
+</ol>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-c" data-lang="c"><span class="line"><span class="cl"><span class="c1">// 使用 DMA 发送，甚至连 UART 的数据搬运中断都省了
+</span></span></span><span class="line"><span class="cl"><span class="c1"></span><span class="nf">HAL_UART_Transmit_DMA</span><span class="p">(</span><span class="n">g_uart</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">g_tx_ring</span><span class="p">[</span><span class="n">g_tx_read</span><span class="p">],</span> <span class="n">contiguous</span><span class="p">);</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>DMA（Direct Memory Access）是专门在内存和外设之间搬运数据的“小 CPU”，用它发送时，内存数据直接由 DMA 硬件喂给 UART，整个过程对 CPU 彻底透明。</p>
 <h3 id="五命令解析主循环中完成">五、命令解析（主循环中完成）
 </h3><h4 id="51-主循环调用app_baremetalc">5.1 主循环调用（app_baremetal.c）
 </h4><div class="highlight"><div class="chroma">
